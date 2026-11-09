@@ -63,6 +63,29 @@ body::after {
   pointer-events: none;
 }
 
+.sound-toggle {
+  position: fixed;
+  z-index: 4;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  min-height: 42px;
+  padding: 9px 15px;
+  border: 1px solid rgb(233 77 130 / 20%);
+  border-radius: 999px;
+  color: var(--ink);
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 5px 18px rgb(108 47 70 / 10%);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+
+.sound-toggle:hover { background: white; }
+.sound-toggle:focus-visible { outline: 3px solid #8e3156; outline-offset: 3px; }
+.sound-toggle[aria-pressed="true"] { color: white; border-color: transparent; background: linear-gradient(135deg, #f16d96, #df3f78); }
+
 .container {
   position: relative;
   z-index: 2;

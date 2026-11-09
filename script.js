@@ -131,6 +131,119 @@
     if (!reducedMotion.matches) frame = requestAnimationFrame(animate);
   }
 
+  // Use the Web Audio API to synthesize a gentle, MIDI-style ambient loop and fireworks.
+  // Browsers require a user gesture before audio can play, so sound starts from this toggle.
+  const soundToggle = document.querySelector(".sound-toggle");
+  if (soundToggle) {
+    let audio;
+    let master;
+    let melodyTimer;
+    let noteIndex = 0;
+    const isCelebration = document.body.classList.contains("celebration");
+    const melody = [261.63, 329.63, 392, 329.63, 293.66, 349.23, 440, 349.23];
+
+    function playNote(frequency, start, duration, volume = 0.035, type = "sine") {
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(volume, start + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      oscillator.connect(gain);
+      gain.connect(master);
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.03);
+    }
+
+    function playFirework(delay = 0) {
+      const start = audio.currentTime + delay;
+      const oscillator = audio.createOscillator();
+      const tone = audio.createGain();
+      oscillator.type = "sawtooth";
+      oscillator.frequency.setValueAtTime(520, start);
+      oscillator.frequency.exponentialRampToValueAtTime(95, start + 0.48);
+      tone.gain.setValueAtTime(0.0001, start);
+      tone.gain.exponentialRampToValueAtTime(0.12, start + 0.07);
+      tone.gain.exponentialRampToValueAtTime(0.001, start + 0.52);
+      oscillator.connect(tone);
+      tone.connect(master);
+      oscillator.start(start);
+      oscillator.stop(start + 0.55);
+
+      const length = Math.floor(audio.sampleRate * 0.7);
+      const noiseBuffer = audio.createBuffer(1, length, audio.sampleRate);
+      const samples = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < length; i += 1) {
+        samples[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2;
+      }
+      const noise = audio.createBufferSource();
+      const filter = audio.createBiquadFilter();
+      const crackle = audio.createGain();
+      noise.buffer = noiseBuffer;
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(5200, start);
+      filter.frequency.exponentialRampToValueAtTime(650, start + 0.62);
+      crackle.gain.setValueAtTime(0.0001, start);
+      crackle.gain.exponentialRampToValueAtTime(0.13, start + 0.035);
+      crackle.gain.exponentialRampToValueAtTime(0.001, start + 0.68);
+      noise.connect(filter);
+      filter.connect(crackle);
+      crackle.connect(master);
+      noise.start(start);
+      noise.stop(start + 0.7);
+    }
+
+    function startSound() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        soundToggle.textContent = "Audio unavailable";
+        soundToggle.disabled = true;
+        return;
+      }
+      audio = new AudioContext();
+      master = audio.createGain();
+      master.gain.value = 0.55;
+      master.connect(audio.destination);
+      audio.resume();
+
+      const playNext = () => {
+        const now = audio.currentTime;
+        const root = melody[noteIndex % melody.length];
+        playNote(root, now, 1.25, 0.025, "sine");
+        playNote(root * 1.5, now + 0.12, 1.05, 0.012, "triangle");
+        if (noteIndex % 4 === 0) playNote(root / 2, now, 1.8, 0.016, "sine");
+        noteIndex += 1;
+      };
+      playNext();
+      melodyTimer = window.setInterval(playNext, 1150);
+      if (isCelebration) {
+        playFirework(0.15);
+        playFirework(0.85);
+        playFirework(1.55);
+      }
+    }
+
+    function stopSound() {
+      window.clearInterval(melodyTimer);
+      if (audio) {
+        const oldAudio = audio;
+        audio = null;
+        master = null;
+        oldAudio.close();
+      }
+    }
+
+    soundToggle.addEventListener("click", () => {
+      const enabled = soundToggle.getAttribute("aria-pressed") !== "true";
+      soundToggle.setAttribute("aria-pressed", String(enabled));
+      soundToggle.setAttribute("aria-label", enabled ? "Turn sound off" : "Turn sound on");
+      soundToggle.textContent = enabled ? "♫ Sound on" : "♫ Sound off";
+      if (enabled) startSound();
+      else stopSound();
+    });
+  }
+
   const noButton = document.querySelector("#move-random");
   if (noButton) {
     const dodge = () => {
